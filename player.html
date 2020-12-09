@@ -1,0 +1,330 @@
+  <!--
+    This file is part of the Course Player web application.
+    By Cliff Earl.
+    Copyright 2020, Antix Development.
+    Licensed under the MIT license.
+  -->
+<!DOCTYPE html>
+<html lang="en">
+	<head>
+		<title>Course Player</title>
+		<meta name="description" content="Video player">
+		<meta name="keywords" content="Antix, Video Viewer">
+		<meta name="author" content="Antix Development">
+		<meta name="copyright" content="Copyright 2020 Antix Development">
+		<meta charset="utf-8">
+		<meta name="viewport" content="width=device-width, initial-scale=1.0">
+  </head>
+  <style>
+    * {
+      outline: 0;
+      outline-offset: -1px;
+    }
+    *:focus {
+      outline: 0;
+    }
+    html {
+      font-family: Verdana,sans-serif;
+      font-size: 15px;
+      line-height: 1.5;
+      background-color: #333;
+    }
+    h5 {
+      margin: 12px 0px;
+      padding-left: 8px;
+      color: #ddd;
+    }
+    h6 {
+      margin: 4px 0px;
+      margin-bottom: 12px;
+      padding-left: 8px;
+      color: #ddd;
+    }
+    .navbar {
+      position: absolute;
+      left:0;
+      top:0;
+      width: 20%;
+      background-color: #333;
+      height:100%;
+      overflow-y:scroll;
+    }
+    .player {
+      position: absolute;
+      left: 20%;
+      top:0;
+      width:80%;
+      background-color: #333;
+      height:100%;
+    }
+    .accordion {
+      width: 100%;
+      border: none;
+      display: inline-block;
+      padding: 4px 8px;
+      vertical-align: middle;
+      overflow: hidden;
+      text-decoration: none;
+      color: #ddd;
+      background-color: inherit;
+      text-align: left;
+      cursor: pointer;
+      white-space: nowrap;
+      background-color: #333;
+      border-bottom: 2px solid #aaa;
+      border-radius: 0;
+    }
+    .first {
+      border-top: 2px solid #aaa !important;
+    }
+    .container {
+      border-bottom: 2px solid #aaa;
+    }
+    .episode {
+      width: 100%;
+      border: none;
+      display: inline-block;
+      padding: 4px 24px;
+      vertical-align: middle;
+      overflow: hidden;
+      text-decoration: none;
+      color: #ddd;
+      background-color: inherit;
+      text-align: left;
+      cursor: pointer;
+      white-space: nowrap;
+      background-color: #333;
+      border-radius: 0;
+    }
+    .accordion:hover {
+      color: #fff!important;
+      background-color: #666!important;
+    }
+    .episode:hover {
+      color: #fff!important;
+      background-color: #777!important;
+    }
+    .playing {
+      color: #fff!important;
+      background-color: #ea3!important;
+    }
+    .hidden {
+      display: none!important;
+    }
+    .show {
+      display: block!important;
+    }
+    .noselect {
+      -webkit-touch-callout: none;
+      -webkit-user-select: none;
+      -khtml-user-select: none;
+      -moz-user-select: none;
+      -ms-user-select: none;
+      user-select: none;
+    }
+  </style>
+  <body>
+    <div id="navbar" class="navbar">
+      <!-- The course title will be appended here -->
+      <!-- The course presenter will be appended here -->
+      <!-- Accordions and their associated elements will be appended here -->
+    </div>
+    <div id="player" class="player">
+      <video id="video" width="100%" controls onended="advancePlayList();">
+        Sorry, your browser does not support HTML5 video.
+      </video> 
+    </div>
+	</body>
+  <script>
+
+    // The loaded file will be stored here
+    let data;
+
+    // These variables determine how the filenames are manipulated before being presented to the user
+    let stripCount = 0; // Number of chars that will be stripped from the beginning of filenames
+    let stripExtensions = false; // Whether to strip the file extension from filenames
+
+    let playList = []; // Video filenames and button references will be stored here
+
+    let playListIndex = -1; // Which episode is currently playing
+
+    // Get the navbar, where all title, presenter, and navigational elements will be appended
+    let navBar = document.getElementById('navbar');
+
+    // Get the video element
+    let video = document.getElementById('video');
+
+    // 
+    // Create accordions and associated elements
+    function createAccordions() {
+
+      let accordion, container;
+
+      let chapter = 1;
+      let chapterName;
+
+      for (let i = 4; i < data.length; i++) { // Process all filenames (skipping the first one which is the course title)
+        let fileName = data[i]; // Next filename
+
+        if (fileName.includes('.txt')) {
+
+          // 
+          // Create a new accordion if the name contains '.txt'.
+          // 
+
+          accordion = document.createElement('button'); // Create a new button element
+          accordion.classList.add('accordion', 'noselect'); // Add CSS styles
+
+          // Add a top border to the first accordion to separate it from the title and presenter text
+          if (i === 4) {
+            accordion.classList.add('first');
+          }
+
+          // Extract the label for the accordion
+          chapterName = stripFromFilename(fileName);
+
+          // Get the lowercase version for next check
+          let t = chapterName.toLowerCase();
+
+          // Check if the chapter is in fact an introduction, or a conclusion
+          if ((t === 'introduction') || (t === 'conclusion')) {
+            // The label has no associated chapter number
+            accordion.innerHTML = chapterName;
+
+          } else {
+            // Prepend the chapter number to the label
+            accordion.innerHTML = chapter + '. ' + chapterName;
+            chapter ++;
+          }
+
+          // Whenever an accordion is clicked, toggle the shown/hidden state of the associated container
+          accordion.onclick = function() {
+            toggleAccordion('container' + i);
+          };
+
+          // Each accordion is followed by by a div containing the buttons that play the videos
+          container = document.createElement('div'); // Create a new div element
+          container.classList.add('container', 'hidden'); // Add CSS styles
+          container.id = 'container' + i;
+
+          // Append accordion and container to the navbar
+          navBar.appendChild(accordion);
+          navBar.appendChild(container);
+
+        } else {
+
+          // 
+          // Otherwise append a new button to the container
+          // 
+
+          let button = document.createElement('button');// Create a new button element
+          button.innerHTML = stripFromFilename(fileName); // Set label
+          button.classList.add('episode', 'noselect'); // Add CSS styles
+
+          // Create a new playlist entry and push it into the playList
+          let playListEntry = {
+            fileName : fileName,
+            button : button
+          };
+          playList.push(playListEntry);
+
+          // Store the index so the button knows which video to play when clicked
+          button.id = playList.length - 1;
+
+          // This code is called whenever a button is pressed
+          button.onclick = function() {
+            playVideo(button.id * 1);
+          };
+
+          // Append the button to the container
+          container.appendChild(button);
+        }
+      } // End data loop
+    }
+
+    // 
+    // Toggle the visibility of the container with the given id
+    function toggleAccordion(id) {
+      let e = document.getElementById(id);
+      e.classList.toggle('hidden');
+    }
+
+    // 
+    // Conditionally strip file extension and n chars from the beginning of a string
+    function stripFromFilename(s) {
+      if (stripCount > 0) {
+        s = s.substr(stripCount);
+      }
+      if (stripExtensions) {
+        s = s.replace(/\.[^/.]+$/, "");
+      }
+      return s;
+    }
+
+    // 
+    // Play the video at the given index in the playList
+    function playVideo(index) {
+
+      playListIndex = index; // Save this for later
+
+      // Get a list of all buttons that are currently highlighted (there will only be one)
+      const playing = document.getElementsByClassName('playing');
+      let button;
+      for (let i = 0; i < playing.length; i++) {
+        button = playing[i];
+        button.classList.remove('playing'); // Unhighlight the button
+      }
+
+      // Get the playlist entry, containing the filename to be played, and the button that was clicked
+      let playListEntry = playList[index];
+      button = playListEntry.button;
+      button.classList.add('playing'); // Highlight the button
+
+      // Set the new video source
+      video.src = 'video/' + playListEntry.fileName;
+
+      // And.... Action!!
+      video.play();
+
+      // Give the video the focus so keyboard commands work (space to pause, etc)
+      video.focus();
+    }
+
+    // 
+    // Play the next video in the playList
+    function advancePlayList() {
+      playListIndex += 1;
+
+      playVideo(playListIndex);
+    }
+
+    // Create a script element and use it to load the data file
+    let script = document.createElement('script');
+
+    // When the local data file has loaded, this code will be called
+    script.onload = function () {
+
+      // Append the course title to the navbar
+      document.getElementById('navbar').innerHTML = '<h5 class="noselect">' + data[0] + '</h5>';
+
+      // Append the course presenters name to the navbar
+      document.getElementById('navbar').innerHTML += '<h6 class="noselect">Presented by ' + data[1] + '<h6>';
+
+      // Determine if filenames will have their extensions stripped before being made into button labels
+      stripExtensions = (data[3] === 'stripExtensions');
+
+      // Get the number of charactwers to strip from each filenames before being made into button labels
+      stripCount = data[2].split(' ')[1] * 1;
+
+      // Create the accordions
+      createAccordions();
+    };
+
+    // Start the file loading by supplying its name
+    script.src = 'data.txt';
+
+    // Append the script to the document
+    document.head.appendChild(script);
+
+  </script>
+</html>
