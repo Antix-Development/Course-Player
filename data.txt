@@ -1,9 +1,13 @@
+// Note: This is a JavaScript file and as such must adhere to JavaScript syntax
+
 data = [
 	'Example Video Course', // Title
 	'Cliff Earl', // Presenter
 
 	'strip 5', // Number of characters to strip from the front of each filename
 	'stripExtensions', // valid values are "stripExtensions" and "leaveExtensions"
+
+  // The remaining strings contain capter and episode data
 
 	'0000 Introduction.txt', // Chapter
 	'0001 Example video 1.mp4', // Episode
